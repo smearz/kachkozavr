@@ -213,5 +213,10 @@
     "title": "[TASK] Fix Prisma opposite relation for Exercise and WorkoutExercise",
     "body": "Add missing opposite relation field on Exercise model to satisfy Prisma schema validation.",
     "labels": ["type:task", "prio:p1", "area:infra", "status:todo"]
+  },
+  {
+    "title": "[TASK] Implement private media uploads via filesystem provider",
+    "body": "Replace MinIO dependency for MVP media path with local filesystem storage provider, private access checks, and report attachment endpoints.",
+    "labels": ["type:task", "prio:p1", "area:media", "status:todo"]
   }
 ]
