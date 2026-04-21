@@ -19,6 +19,7 @@ MVP для control-loop продукта тренера и ученика.
    - `pnpm --filter @kachkozavr/api prisma:generate`
    - `pnpm --filter @kachkozavr/api prisma:migrate:dev`
    - `pnpm --filter @kachkozavr/api prisma:seed`
+   - при первом запуске укажи `JWT_SECRET` в `.env`
 5. Запустить сервисы по отдельности:
    - `pnpm dev:api`
    - `pnpm dev:web`
@@ -30,6 +31,9 @@ MVP для control-loop продукта тренера и ученика.
 - Подготовлен минимальный API health endpoint (`/health`).
 - Подготовлен worker-процесс для очередей.
 - Добавлен docker-compose для PostgreSQL, Redis, MinIO.
+- Добавлены auth endpoints:
+  - `POST /auth/trainer/signup`
+  - `POST /auth/login`
 
 ## Процесс работы с задачами
 
