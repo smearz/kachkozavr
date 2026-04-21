@@ -1,4 +1,4 @@
-name: API Smoke (Auth + Invite + Join)
+name: API Smoke (Core Loop Slice)
 
 on:
   workflow_dispatch:
@@ -103,10 +103,51 @@ jobs:
             -H "content-type: application/json" \
             -d "{\"token\":\"$invite_token\",\"email\":\"student-smoke@example.com\",\"password\":\"StrongPass123!\",\"displayName\":\"Smoke Student\"}")
           echo "$student_join" | grep '"role":"student"'
+          student_token=$(echo "$student_join" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).token));")
 
           invite_validate_after=$(curl -fsS "http://127.0.0.1:4000/invites/validate?token=$invite_token")
           echo "$invite_validate_after" | grep '"valid":false'
           echo "$invite_validate_after" | grep '"reason":"used_out"'
+
+          student_id=$(psql "$DATABASE_URL" -t -A -c "SELECT s.id FROM \"Student\" s JOIN \"User\" u ON u.id=s.\"userId\" WHERE u.email='student-smoke@example.com' LIMIT 1;")
+          exercise_id="ex_smoke_$(date +%s)"
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO \"Exercise\" (id, slug, name, category, \"createdAt\", \"updatedAt\") VALUES ('$exercise_id','smoke-pushup','Smoke Pushup','upper',NOW(),NOW());"
+
+          program_create=$(curl -fsS -X POST http://127.0.0.1:4000/programs \
+            -H "content-type: application/json" \
+            -H "authorization: Bearer $trainer_token" \
+            -d "{\"name\":\"Smoke Program\",\"workouts\":[{\"title\":\"Workout A\",\"dayOrder\":1,\"exercises\":[{\"exerciseId\":\"$exercise_id\",\"position\":1,\"plannedReps\":10}]}]}")
+          program_id=$(echo "$program_create" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).program.id));")
+
+          assignment_create=$(curl -fsS -X POST http://127.0.0.1:4000/assignments \
+            -H "content-type: application/json" \
+            -H "authorization: Bearer $trainer_token" \
+            -d "{\"programId\":\"$program_id\",\"studentId\":\"$student_id\"}")
+          echo "$assignment_create" | grep '"isActive":true'
+
+          current_workout=$(curl -fsS http://127.0.0.1:4000/students/me/current-workout \
+            -H "authorization: Bearer $student_token")
+          assignment_id=$(echo "$current_workout" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).assignment.id));")
+          workout_exercise_id=$(echo "$current_workout" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).assignment.program.workouts[0].exercises[0].id));")
+
+          report_submit=$(curl -fsS -X POST http://127.0.0.1:4000/reports/submit \
+            -H "content-type: application/json" \
+            -H "authorization: Bearer $student_token" \
+            -d "{\"assignmentId\":\"$assignment_id\",\"idempotencyKey\":\"smoke-key-001\",\"workoutStatus\":\"completed\",\"executions\":[{\"workoutExerciseId\":\"$workout_exercise_id\",\"status\":\"done\",\"actualReps\":10}],\"wellbeing\":{\"score\":4,\"label\":\"ok\"}}")
+          report_id=$(echo "$report_submit" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).report.id));")
+
+          png_path="/tmp/smoke.png"
+          printf '%s' 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7+KXcAAAAASUVORK5CYII=' | base64 -d > "$png_path"
+
+          attachment_create=$(curl -fsS -X POST "http://127.0.0.1:4000/reports/$report_id/attachments" \
+            -H "authorization: Bearer $student_token" \
+            -F "file=@$png_path;type=image/png")
+          attachment_id=$(echo "$attachment_create" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).attachment.id));")
+
+          curl -fsS "http://127.0.0.1:4000/attachments/$attachment_id/content" \
+            -H "authorization: Bearer $trainer_token" \
+            -o /tmp/downloaded_smoke.png
+          test -s /tmp/downloaded_smoke.png
 
       - name: Print API log on failure
         if: failure()
