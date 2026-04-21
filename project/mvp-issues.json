@@ -228,5 +228,15 @@
     "title": "[TASK] Audit hotfixes for queue hangs and race-safe idempotency",
     "body": "Implement fail-fast queue publishing, curl timeouts in smoke, race-safe idempotency for report submit, invite join race mapping, no_report_7d active cohort scope, and JWT secret hardening.",
     "labels": ["type:task", "prio:p0", "area:infra", "status:todo"]
+  },
+  {
+    "title": "[TASK] Add minimal web screens for trainer auth, invite creation and student join",
+    "body": "Implement mobile-first MVP screens to run onboarding flow end-to-end via web UI: trainer signup/login, group/invite creation, student join by token.",
+    "labels": ["type:task", "prio:p1", "area:infra", "status:todo"]
+  },
+  {
+    "title": "[TASK] Add trainer groups API for invite creation flow",
+    "body": "Expose trainer-owned group create/list endpoints required by invite UI flow.",
+    "labels": ["type:task", "prio:p1", "area:groups-invites", "status:todo"]
   }
 ]
