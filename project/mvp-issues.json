@@ -203,5 +203,10 @@
     "title": "[TASK] Prepare runbook: local run, backup/restore, release checklist",
     "body": "Document operational basics for self-hosted deployment and recovery.",
     "labels": ["type:task", "prio:p2", "area:infra", "status:todo"]
+  },
+  {
+    "title": "[TASK] Add alpha checkpoint API smoke doc",
+    "body": "Document a reproducible API-only smoke scenario for auth + invites + student join before frontend implementation.",
+    "labels": ["type:task", "prio:p1", "area:infra", "status:todo"]
   }
 ]
