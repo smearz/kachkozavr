@@ -112,12 +112,13 @@ model Invite {
 }
 
 model Exercise {
-  id          String   @id @default(cuid())
-  slug        String   @unique
-  name        String
-  category    String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id               String            @id @default(cuid())
+  slug             String            @unique
+  name             String
+  category         String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  workoutExercises WorkoutExercise[]
 }
 
 model Program {
