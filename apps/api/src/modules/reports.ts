@@ -2,6 +2,7 @@ import { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { requireStudent } from "./auth-guards.js";
+import { triggerQueue } from "../queues/trigger-queue.js";
 
 const submitReportSchema = z.object({
   assignmentId: z.string().min(1),
@@ -160,9 +161,30 @@ export async function registerReportRoutes(app: FastifyInstance) {
       return fullReport;
     });
 
+    try {
+      await triggerQueue.add(
+        "report-submitted",
+        {
+          reportId: result.id,
+          studentId: auth.studentId,
+          assignmentId: input.assignmentId
+        },
+        {
+          removeOnComplete: 50,
+          removeOnFail: 50
+        }
+      );
+    } catch (error) {
+      request.log.warn({ error }, "trigger_queue_enqueue_failed");
+    }
+
     return reply.code(201).send({
       idempotentReplay: false,
       report: result
     });
+  });
+
+  app.addHook("onClose", async () => {
+    await triggerQueue.close();
   });
 }

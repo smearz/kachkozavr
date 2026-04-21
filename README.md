@@ -39,6 +39,12 @@ MVP для control-loop продукта тренера и ученика.
 - `POST /reports/:reportId/attachments` (filesystem provider)
 - `GET /attachments/:attachmentId/content` (private read)
 
+## Trigger pipeline v1
+
+- API enqueue: `report-submitted` job при submit отчета.
+- Worker rule: `no_report_7d` (activate/auto-resolve).
+- Периодический reconcile: каждые 6 часов.
+
 ## Media storage (MVP)
 
 - Для MVP используется локальный `filesystem provider`.
