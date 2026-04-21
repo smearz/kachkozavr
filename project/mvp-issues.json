@@ -1,37 +1,207 @@
 [
   {
-    "title": "[EPIC] Auth + Invite + Membership",
-    "body": "Outcome: secure trainer/student onboarding via invite links with auditable group membership.\n\nDoD:\n- Trainer signup/login works\n- Invite create/revoke works\n- Student join via invite works\n- Membership/audit events stored",
+    "title": "[EPIC] E0 Scope & Architecture Baseline",
+    "body": "Outcome: fixed MVP boundaries and implementation architecture for fast execution.\n\nDoD:\n- MVP_SCOPE.md committed\n- ARCH_DECISIONS.md committed\n- Security minimum list fixed\n- Core control-loop acceptance criteria approved",
+    "labels": ["type:epic", "prio:p1", "area:infra", "status:todo"]
+  },
+  {
+    "title": "[EPIC] E1 Platform Bootstrap & Domain Model",
+    "body": "Outcome: runnable local platform with DB schema and seeds.\n\nDoD:\n- Monorepo bootstrapped\n- Docker stack runs locally\n- Prisma migrations applied\n- Seed data creates demo trainer/student/program",
+    "labels": ["type:epic", "prio:p0", "area:infra", "status:todo"]
+  },
+  {
+    "title": "[EPIC] E2 Auth + Invite + Membership",
+    "body": "Outcome: secure onboarding for trainer and student via invite links.\n\nDoD:\n- Trainer signup/login works\n- Invite create/revoke works\n- Student join via invite works\n- Membership/audit events stored\n- Role/object checks implemented",
     "labels": ["type:epic", "prio:p0", "area:auth", "area:groups-invites", "status:todo"]
   },
   {
-    "title": "[EPIC] Reports + Media Uploads",
-    "body": "Outcome: student can submit training report with execution facts and photo attachment.\n\nDoD:\n- Report submit is idempotent\n- Photo upload to private storage works\n- Access to attachments is signed and scoped",
+    "title": "[EPIC] E3 Programs + Assignments",
+    "body": "Outcome: trainer can build and assign programs from exercise library.\n\nDoD:\n- Exercise library available\n- Program/workout/exercises constructor works\n- Assignment flow works\n- One active assignment per student enforced",
+    "labels": ["type:epic", "prio:p0", "area:programs", "status:todo"]
+  },
+  {
+    "title": "[EPIC] E4 Reports + Media + Offline Draft",
+    "body": "Outcome: student can submit reliable report with photo even under unstable network.\n\nDoD:\n- Report submit is idempotent\n- Per-exercise execution facts stored\n- Wellbeing and comments stored\n- Photo upload to private storage works\n- Offline draft + retry works",
     "labels": ["type:epic", "prio:p0", "area:reports", "area:media", "status:todo"]
   },
   {
-    "title": "[EPIC] Triggers + Attention Queue + Program Evaluation",
-    "body": "Outcome: trainer sees explainable active risks and basic assignment quality signals.\n\nDoD:\n- 3 triggers active (no_report_7d, two_skipped_in_row, wellbeing_low_n_times)\n- Attention queue supports resolve with note\n- Program evaluation screen shows adherence and plan-vs-actual trend",
+    "title": "[EPIC] E5 Triggers + Attention Queue + Program Evaluation",
+    "body": "Outcome: trainer sees explainable active risks and assignment quality signals.\n\nDoD:\n- 3 triggers active (no_report_7d, two_skipped_in_row, wellbeing_low_n_times)\n- Explainability payload available\n- Attention queue supports resolve with note\n- Program evaluation shows adherence and plan-vs-actual trend",
     "labels": ["type:epic", "prio:p0", "area:triggers", "status:todo"]
   },
   {
-    "title": "[TASK] Boot monorepo + docker-compose baseline",
-    "body": "Create apps/web, apps/api, apps/worker, infra/docker and local compose for postgres/redis/minio.",
+    "title": "[EPIC] E6 Notifications + Security Hardening + Release",
+    "body": "Outcome: MVP is safely operable in production-like environment.\n\nDoD:\n- In-app notifications for trigger activation\n- Rate limiting on auth/invite/upload/report submit\n- Audit trail complete for critical events\n- Backup/restore runbook documented\n- Release checklist passed",
+    "labels": ["type:epic", "prio:p1", "area:infra", "status:todo"]
+  },
+  {
+    "title": "[TASK] Create MVP_SCOPE.md with in/out boundaries",
+    "body": "Document exact scope for MVP v1 and non-goals to avoid scope creep.",
     "labels": ["type:task", "prio:p1", "area:infra", "status:todo"]
   },
   {
-    "title": "[TASK] Implement invite token hashing + TTL + one-time use",
-    "body": "Add secure invite model and validation endpoints with audit logging.",
+    "title": "[TASK] Create ARCH_DECISIONS.md for variant #1 stack",
+    "body": "Record architecture decisions: Next.js, NestJS, Postgres, Redis, MinIO, BullMQ, modular monolith.",
+    "labels": ["type:task", "prio:p1", "area:infra", "status:todo"]
+  },
+  {
+    "title": "[TASK] Bootstrap monorepo folders and package tooling",
+    "body": "Create apps/web, apps/api, apps/worker, packages/shared-types, infra/docker.",
+    "labels": ["type:task", "prio:p1", "area:infra", "status:todo"]
+  },
+  {
+    "title": "[TASK] Add docker-compose for postgres, redis, minio",
+    "body": "Provide local stack and healthchecks for all infrastructure components.",
+    "labels": ["type:task", "prio:p1", "area:infra", "status:todo"]
+  },
+  {
+    "title": "[TASK] Implement Prisma schema and initial migration set",
+    "body": "Add entities for trainer/student/group/invite/program/assignment/report/attachment/trigger/notification/audit/domain_event.",
+    "labels": ["type:task", "prio:p1", "area:infra", "status:todo"]
+  },
+  {
+    "title": "[TASK] Implement seed script for demo trainer/student/program",
+    "body": "Seed deterministic demo data for manual QA and e2e smoke.",
+    "labels": ["type:task", "prio:p2", "area:infra", "status:todo"]
+  },
+  {
+    "title": "[TASK] Trainer auth endpoints with Argon2id",
+    "body": "Implement signup/login/logout/refresh flow and secure password handling.",
+    "labels": ["type:task", "prio:p0", "area:auth", "status:todo"]
+  },
+  {
+    "title": "[TASK] Session strategy with refresh rotation in httpOnly cookies",
+    "body": "Implement access+refresh token/session lifecycle and revoke support.",
+    "labels": ["type:task", "prio:p0", "area:auth", "status:todo"]
+  },
+  {
+    "title": "[TASK] Role checks and object-level access guards",
+    "body": "Ensure student sees only own data and trainer sees only own group data.",
+    "labels": ["type:task", "prio:p0", "area:auth", "status:todo"]
+  },
+  {
+    "title": "[TASK] Invite model with token hash, TTL, one-time use, revoke",
+    "body": "Build secure invite lifecycle with token hashing and anti-replay protections.",
+    "labels": ["type:task", "prio:p0", "area:groups-invites", "status:todo"]
+  },
+  {
+    "title": "[TASK] Student join flow via invite link",
+    "body": "Implement invite validation, student account creation, group membership creation.",
+    "labels": ["type:task", "prio:p0", "area:groups-invites", "status:todo"]
+  },
+  {
+    "title": "[TASK] Audit log for invite and membership actions",
+    "body": "Persist audit events for invite_created/used/revoked and membership_created.",
     "labels": ["type:task", "prio:p1", "area:groups-invites", "status:todo"]
   },
   {
-    "title": "[TASK] Implement report submit API with idempotency key",
-    "body": "Store per-exercise execution facts and wellbeing; prevent duplicate submissions.",
+    "title": "[TASK] Exercise library seed (curated MVP dataset)",
+    "body": "Add curated exercise list with stable IDs and basic metadata.",
+    "labels": ["type:task", "prio:p1", "area:programs", "status:todo"]
+  },
+  {
+    "title": "[TASK] Trainer program builder API",
+    "body": "Create/edit program with workouts and workout exercises (no set-level logging).",
+    "labels": ["type:task", "prio:p0", "area:programs", "status:todo"]
+  },
+  {
+    "title": "[TASK] Assignment API with one active assignment rule",
+    "body": "Assign program to student and enforce one active assignment per student.",
+    "labels": ["type:task", "prio:p0", "area:programs", "status:todo"]
+  },
+  {
+    "title": "[TASK] Student current workout read API",
+    "body": "Expose current assignment/workout details for mobile student flow.",
+    "labels": ["type:task", "prio:p1", "area:programs", "status:todo"]
+  },
+  {
+    "title": "[TASK] Report draft and submit API with idempotency key",
+    "body": "Persist report, exercise executions, wellbeing and comments; prevent duplicate submit.",
+    "labels": ["type:task", "prio:p0", "area:reports", "status:todo"]
+  },
+  {
+    "title": "[TASK] Student report UI flow (today -> workout -> submit)",
+    "body": "Implement mobile-first report flow including done/skipped/modified and plan-vs-actual inputs.",
+    "labels": ["type:task", "prio:p0", "area:reports", "status:todo"]
+  },
+  {
+    "title": "[TASK] Private media upload API backed by MinIO",
+    "body": "Support report photo uploads with size/type/count limits and metadata storage.",
+    "labels": ["type:task", "prio:p0", "area:media", "status:todo"]
+  },
+  {
+    "title": "[TASK] Signed URL media read with ACL checks",
+    "body": "Only authorized trainer/student can access attachment through short-lived signed URLs.",
+    "labels": ["type:task", "prio:p0", "area:media", "status:todo"]
+  },
+  {
+    "title": "[TASK] Offline draft storage and retry queue in web app",
+    "body": "Store report draft in IndexedDB and auto-retry submit on connectivity restoration.",
     "labels": ["type:task", "prio:p1", "area:reports", "status:todo"]
   },
   {
-    "title": "[TASK] Implement trigger worker and attention queue API",
-    "body": "Evaluate 3 v1 rules and persist explainable trigger payloads.",
+    "title": "[TASK] Trigger engine v1 worker pipeline",
+    "body": "Implement event + scheduled reconcile trigger evaluation with BullMQ.",
+    "labels": ["type:task", "prio:p0", "area:triggers", "status:todo"]
+  },
+  {
+    "title": "[TASK] Implement trigger rule no_report_7d",
+    "body": "Activate trigger when no report has been submitted for more than 7 days.",
+    "labels": ["type:task", "prio:p0", "area:triggers", "status:todo"]
+  },
+  {
+    "title": "[TASK] Implement trigger rule two_skipped_in_row",
+    "body": "Activate trigger when two consecutive workouts are skipped.",
+    "labels": ["type:task", "prio:p0", "area:triggers", "status:todo"]
+  },
+  {
+    "title": "[TASK] Implement trigger rule wellbeing_low_n_times",
+    "body": "Activate trigger when poor wellbeing repeats above threshold in time window.",
+    "labels": ["type:task", "prio:p0", "area:triggers", "status:todo"]
+  },
+  {
+    "title": "[TASK] Add explainability payload for every trigger activation",
+    "body": "Store why/when/data points for trigger activation and resolution decisions.",
+    "labels": ["type:task", "prio:p0", "area:triggers", "status:todo"]
+  },
+  {
+    "title": "[TASK] Attention queue API and trainer UI",
+    "body": "Show active triggers sorted by urgency with reason chips and timestamps.",
+    "labels": ["type:task", "prio:p0", "area:triggers", "status:todo"]
+  },
+  {
+    "title": "[TASK] Trigger resolution workflow with trainer note",
+    "body": "Allow trainer to mark trigger resolved and persist action note and actor.",
     "labels": ["type:task", "prio:p1", "area:triggers", "status:todo"]
+  },
+  {
+    "title": "[TASK] Program evaluation service (adherence + plan-vs-actual trend)",
+    "body": "Compute basic assignment quality metrics and expose to trainer view.",
+    "labels": ["type:task", "prio:p1", "area:triggers", "status:todo"]
+  },
+  {
+    "title": "[TASK] In-app notifications for trigger activation",
+    "body": "Create notification records when high-priority trigger becomes active.",
+    "labels": ["type:task", "prio:p2", "area:triggers", "status:todo"]
+  },
+  {
+    "title": "[TASK] Rate limiting for auth/invite/upload/report endpoints",
+    "body": "Apply endpoint throttling to reduce abuse and brute-force attempts.",
+    "labels": ["type:task", "prio:p0", "area:auth", "status:todo"]
+  },
+  {
+    "title": "[TASK] Add domain_event table and emit key events",
+    "body": "Emit ReportSubmitted, TriggerActivated, TriggerResolved for future integrations.",
+    "labels": ["type:task", "prio:p1", "area:infra", "status:todo"]
+  },
+  {
+    "title": "[TASK] Build e2e smoke tests for control loop",
+    "body": "Cover trainer invite -> student join -> report submit -> trigger activation -> resolution.",
+    "labels": ["type:task", "prio:p1", "area:infra", "status:todo"]
+  },
+  {
+    "title": "[TASK] Prepare runbook: local run, backup/restore, release checklist",
+    "body": "Document operational basics for self-hosted deployment and recovery.",
+    "labels": ["type:task", "prio:p2", "area:infra", "status:todo"]
   }
 ]
