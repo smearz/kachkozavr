@@ -208,5 +208,10 @@
     "title": "[TASK] Add alpha checkpoint API smoke doc",
     "body": "Document a reproducible API-only smoke scenario for auth + invites + student join before frontend implementation.",
     "labels": ["type:task", "prio:p1", "area:infra", "status:todo"]
+  },
+  {
+    "title": "[TASK] Fix Prisma opposite relation for Exercise and WorkoutExercise",
+    "body": "Add missing opposite relation field on Exercise model to satisfy Prisma schema validation.",
+    "labels": ["type:task", "prio:p1", "area:infra", "status:todo"]
   }
 ]
