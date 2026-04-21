@@ -34,6 +34,10 @@ MVP для control-loop продукта тренера и ученика.
 - Добавлены auth endpoints:
   - `POST /auth/trainer/signup`
   - `POST /auth/login`
+- Добавлены invite endpoints:
+  - `POST /invites` (trainer only)
+  - `POST /invites/revoke` (trainer only)
+  - `GET /invites/validate?token=...`
 
 ## Процесс работы с задачами
 

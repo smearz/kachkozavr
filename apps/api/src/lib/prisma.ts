@@ -8,6 +8,4 @@ if (!PrismaClientCtor) {
   );
 }
 
-export const prisma = new PrismaClientCtor() as {
-  user: any;
-};
+export const prisma: any = new PrismaClientCtor();
