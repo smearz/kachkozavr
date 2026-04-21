@@ -44,3 +44,17 @@ services:
       - "9001:9001"
     volumes:
       - ./data/minio:/data
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: kachkozavr-minio-init
+    depends_on:
+      - minio
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+      S3_BUCKET: reports-private
+    volumes:
+      - ./minio/create-bucket.sh:/init/create-bucket.sh:ro
+    entrypoint: ["/bin/sh", "/init/create-bucket.sh"]
+    restart: "no"
