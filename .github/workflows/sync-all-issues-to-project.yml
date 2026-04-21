@@ -110,21 +110,58 @@ jobs:
             });
             const onlyIssues = issues.filter(i => !i.pull_request);
 
+            const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
             let added = 0;
+            let skippedConflicts = 0;
             for (const issue of onlyIssues) {
               if (existingIssueIds.has(issue.node_id)) continue;
-              await github.graphql(
-                `
-                  mutation($projectId: ID!, $contentId: ID!) {
-                    addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) {
-                      item { id }
-                    }
+
+              let success = false;
+              const maxAttempts = 5;
+              for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+                try {
+                  await github.graphql(
+                    `
+                      mutation($projectId: ID!, $contentId: ID!) {
+                        addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) {
+                          item { id }
+                        }
+                      }
+                    `,
+                    { projectId, contentId: issue.node_id }
+                  );
+                  added += 1;
+                  success = true;
+                  core.info(`Added issue #${issue.number} to project`);
+                  break;
+                } catch (err) {
+                  const msg = String(err && err.message ? err.message : err);
+                  const isTempConflict =
+                    msg.includes("temporary conflict") ||
+                    msg.includes("already exists");
+
+                  if (isTempConflict && attempt < maxAttempts) {
+                    const waitMs = attempt * 800;
+                    core.warning(`Conflict while adding #${issue.number}, retry ${attempt}/${maxAttempts} after ${waitMs}ms`);
+                    await sleep(waitMs);
+                    continue;
                   }
-                `,
-                { projectId, contentId: issue.node_id }
-              );
-              added += 1;
-              core.info(`Added issue #${issue.number} to project`);
+
+                  if (isTempConflict) {
+                    skippedConflicts += 1;
+                    core.warning(`Skipping #${issue.number} due to repeated project conflict`);
+                    success = true;
+                    break;
+                  }
+
+                  throw err;
+                }
+              }
+
+              if (!success) {
+                core.warning(`Issue #${issue.number} not added`);
+              }
             }
 
-            core.notice(`Sync done. Added ${added} issue(s) to project.`);
+            core.notice(`Sync done. Added ${added} issue(s) to project. Skipped conflicts: ${skippedConflicts}.`);
