@@ -51,7 +51,10 @@ Web:
 
 - API enqueue: `report-submitted` job при submit отчета.
 - Worker использует централизованный `events` block (`config + dispatcher + trigger-engine`).
-- Rule v1: `no_report_7d` (activate/auto-resolve).
+- Rules v1:
+  - `no_report_7d`
+  - `two_skipped_in_row`
+  - `wellbeing_low_n_times`
 - Периодический reconcile: каждые 6 часов (через registry в events config).
 
 ## Media storage (MVP)
