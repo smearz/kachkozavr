@@ -1,11 +1,16 @@
+import Link from "next/link";
+
 export default function Page() {
   return (
     <main>
-      <section className="card">
+      <section className="card stack">
         <h1 className="title">Kachkozavr MVP</h1>
         <p className="muted">
-          Web-приложение поднято. Следующий шаг: auth, invite, assignment и отчеты.
+          Быстрые входы в текущие MVP экраны.
         </p>
+        <Link href="/trainer/auth">/trainer/auth</Link>
+        <Link href="/trainer/groups">/trainer/groups</Link>
+        <Link href="/join">/join</Link>
       </section>
     </main>
   );

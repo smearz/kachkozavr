@@ -3,10 +3,12 @@ import cors from "@fastify/cors";
 import jwt from "@fastify/jwt";
 import multipart from "@fastify/multipart";
 import { registerAuthRoutes } from "./modules/auth.js";
+import { registerGroupRoutes } from "./modules/groups.js";
 import { registerInviteRoutes } from "./modules/invites.js";
 import { registerProgramRoutes } from "./modules/programs.js";
 import { registerReportRoutes } from "./modules/reports.js";
 import { registerMediaRoutes } from "./modules/media.js";
+import { registerTriggerRoutes } from "./modules/triggers.js";
 
 const app = Fastify({ logger: true });
 const nodeEnv = process.env.NODE_ENV ?? "development";
@@ -33,10 +35,12 @@ await app.register(multipart, {
 });
 
 await registerAuthRoutes(app);
+await registerGroupRoutes(app);
 await registerInviteRoutes(app);
 await registerProgramRoutes(app);
 await registerReportRoutes(app);
 await registerMediaRoutes(app);
+await registerTriggerRoutes(app);
 
 app.get("/health", async () => {
   return {

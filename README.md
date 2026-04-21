@@ -38,6 +38,8 @@ MVP для control-loop продукта тренера и ученика.
 - `POST /reports/submit`
 - `POST /reports/:reportId/attachments` (filesystem provider)
 - `GET /attachments/:attachmentId/content` (private read)
+- `GET /trainer/attention-queue`
+- `POST /trainer/triggers/:triggerId/resolve`
 
 ## Trigger pipeline v1
 
