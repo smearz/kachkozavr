@@ -223,5 +223,10 @@
     "title": "[TASK] Extend API smoke workflow for report and attachment flow",
     "body": "Expand CI smoke to cover program/assignment/report submit and filesystem attachment upload/read access checks.",
     "labels": ["type:task", "prio:p1", "area:infra", "status:todo"]
+  },
+  {
+    "title": "[TASK] Audit hotfixes for queue hangs and race-safe idempotency",
+    "body": "Implement fail-fast queue publishing, curl timeouts in smoke, race-safe idempotency for report submit, invite join race mapping, no_report_7d active cohort scope, and JWT secret hardening.",
+    "labels": ["type:task", "prio:p0", "area:infra", "status:todo"]
   }
 ]
