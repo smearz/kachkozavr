@@ -41,6 +41,12 @@ MVP для control-loop продукта тренера и ученика.
 - `GET /trainer/attention-queue`
 - `POST /trainer/triggers/:triggerId/resolve`
 
+Web:
+- `/trainer/auth`
+- `/trainer/groups`
+- `/trainer/attention`
+- `/join`
+
 ## Trigger pipeline v1
 
 - API enqueue: `report-submitted` job при submit отчета.
