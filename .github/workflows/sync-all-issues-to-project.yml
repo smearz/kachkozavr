@@ -2,6 +2,12 @@ name: Sync All Issues To Project
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/sync-all-issues-to-project.yml"
+      - "project/mvp-issues.json"
+      - ".github/workflows/seed-project-backlog.yml"
 
 permissions:
   contents: read
