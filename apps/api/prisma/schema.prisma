@@ -176,6 +176,7 @@ model TrainingReport {
   id             String              @id @default(cuid())
   assignmentId   String
   studentId      String
+  idempotencyKey String
   workoutStatus  WorkoutStatus
   comment        String?
   submittedAt    DateTime            @default(now())
@@ -184,6 +185,9 @@ model TrainingReport {
   wellbeing      Wellbeing?
   executions     ExerciseExecution[]
   attachments    ReportAttachment[]
+
+  @@unique([studentId, idempotencyKey])
+  @@index([assignmentId, submittedAt])
 }
 
 model ExerciseExecution {

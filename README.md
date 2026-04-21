@@ -44,6 +44,8 @@ MVP для control-loop продукта тренера и ученика.
   - `GET /programs` (trainer only)
   - `POST /assignments` (trainer only, one active assignment per student)
   - `GET /students/me/current-workout` (student only)
+- Добавлен report endpoint:
+  - `POST /reports/submit` (student only, idempotency via `idempotencyKey`)
 
 ## Процесс работы с задачами
 
