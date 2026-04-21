@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Product/Architecture Note
+    url: https://github.com/
+    about: Use discussions/docs for broad product conversations.

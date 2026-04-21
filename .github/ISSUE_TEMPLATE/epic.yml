@@ -1,0 +1,37 @@
+name: Epic
+description: Large workstream with measurable outcome
+title: "[EPIC] "
+labels: ["type:epic", "status:todo"]
+body:
+  - type: input
+    id: outcome
+    attributes:
+      label: Outcome
+      description: What business/product outcome should this epic produce?
+      placeholder: Example - Working trainer control loop with attention queue
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: What is in scope for this epic?
+      placeholder: List concrete deliverables
+    validations:
+      required: true
+  - type: textarea
+    id: dod
+    attributes:
+      label: Definition of Done
+      description: How do we know this epic is complete?
+      placeholder: Observable and testable criteria
+    validations:
+      required: true
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risks
+      description: Main delivery risks
+      placeholder: Technical/product risks
+    validations:
+      required: false

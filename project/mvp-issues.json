@@ -1,0 +1,37 @@
+[
+  {
+    "title": "[EPIC] Auth + Invite + Membership",
+    "body": "Outcome: secure trainer/student onboarding via invite links with auditable group membership.\n\nDoD:\n- Trainer signup/login works\n- Invite create/revoke works\n- Student join via invite works\n- Membership/audit events stored",
+    "labels": ["type:epic", "prio:p0", "area:auth", "area:groups-invites", "status:todo"]
+  },
+  {
+    "title": "[EPIC] Reports + Media Uploads",
+    "body": "Outcome: student can submit training report with execution facts and photo attachment.\n\nDoD:\n- Report submit is idempotent\n- Photo upload to private storage works\n- Access to attachments is signed and scoped",
+    "labels": ["type:epic", "prio:p0", "area:reports", "area:media", "status:todo"]
+  },
+  {
+    "title": "[EPIC] Triggers + Attention Queue + Program Evaluation",
+    "body": "Outcome: trainer sees explainable active risks and basic assignment quality signals.\n\nDoD:\n- 3 triggers active (no_report_7d, two_skipped_in_row, wellbeing_low_n_times)\n- Attention queue supports resolve with note\n- Program evaluation screen shows adherence and plan-vs-actual trend",
+    "labels": ["type:epic", "prio:p0", "area:triggers", "status:todo"]
+  },
+  {
+    "title": "[TASK] Boot monorepo + docker-compose baseline",
+    "body": "Create apps/web, apps/api, apps/worker, infra/docker and local compose for postgres/redis/minio.",
+    "labels": ["type:task", "prio:p1", "area:infra", "status:todo"]
+  },
+  {
+    "title": "[TASK] Implement invite token hashing + TTL + one-time use",
+    "body": "Add secure invite model and validation endpoints with audit logging.",
+    "labels": ["type:task", "prio:p1", "area:groups-invites", "status:todo"]
+  },
+  {
+    "title": "[TASK] Implement report submit API with idempotency key",
+    "body": "Store per-exercise execution facts and wellbeing; prevent duplicate submissions.",
+    "labels": ["type:task", "prio:p1", "area:reports", "status:todo"]
+  },
+  {
+    "title": "[TASK] Implement trigger worker and attention queue API",
+    "body": "Evaluate 3 v1 rules and persist explainable trigger payloads.",
+    "labels": ["type:task", "prio:p1", "area:triggers", "status:todo"]
+  }
+]

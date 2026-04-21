@@ -1,0 +1,57 @@
+name: Task
+description: Small deliverable item (0.5-1.5 day)
+title: "[TASK] "
+labels: ["type:task", "status:todo"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - auth
+        - groups-invites
+        - exercises
+        - programs-assignments
+        - reports
+        - media-uploads
+        - triggers-attention-queue
+        - notifications
+        - infra
+        - qa
+    validations:
+      required: true
+  - type: textarea
+    id: user_story
+    attributes:
+      label: User Story
+      description: Who needs what and why?
+      placeholder: As a trainer I want ... so that ...
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: Concrete, testable checks
+      placeholder: |
+        - [ ] API endpoint returns ...
+        - [ ] UI shows ...
+        - [ ] Security check covers ...
+    validations:
+      required: true
+  - type: textarea
+    id: dod
+    attributes:
+      label: Definition of Done
+      description: Technical completion criteria
+      placeholder: Tests, docs, migration, rollout note
+    validations:
+      required: true
+  - type: input
+    id: estimate
+    attributes:
+      label: Estimate
+      description: Rough estimate in ideal hours
+      placeholder: "6"
+    validations:
+      required: false
