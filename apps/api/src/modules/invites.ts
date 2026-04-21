@@ -1,8 +1,9 @@
 import { randomBytes, createHash } from "node:crypto";
 import argon2 from "argon2";
-import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
+import { requireTrainer } from "./auth-guards.js";
 
 const createInviteSchema = z.object({
   groupId: z.string().min(1),
@@ -25,45 +26,14 @@ const joinInviteSchema = z.object({
   displayName: z.string().min(1).max(120).optional()
 });
 
-type AuthUser = {
-  id: string;
-  role: "trainer" | "student";
-};
-
 function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
 }
 
-async function requireAuth(
-  request: FastifyRequest,
-  reply: FastifyReply
-): Promise<AuthUser | null> {
-  try {
-    const payload = await request.jwtVerify<{ sub: string; role: "trainer" | "student" }>();
-    return { id: payload.sub, role: payload.role };
-  } catch {
-    reply.code(401).send({ error: "unauthorized" });
-    return null;
-  }
-}
-
-async function requireTrainer(
-  request: FastifyRequest,
-  reply: FastifyReply
-): Promise<AuthUser | null> {
-  const user = await requireAuth(request, reply);
-  if (!user) return null;
-  if (user.role !== "trainer") {
-    reply.code(403).send({ error: "forbidden" });
-    return null;
-  }
-  return user;
-}
-
 export async function registerInviteRoutes(app: FastifyInstance) {
   app.post("/invites", async (request, reply) => {
-    const user = await requireTrainer(request, reply);
-    if (!user) return;
+    const auth = await requireTrainer(request, reply);
+    if (!auth) return;
 
     const parsed = createInviteSchema.safeParse(request.body);
     if (!parsed.success) {
@@ -72,18 +42,10 @@ export async function registerInviteRoutes(app: FastifyInstance) {
 
     const { groupId, expiresInHours, maxUses } = parsed.data;
 
-    const trainer = await prisma.trainer.findUnique({
-      where: { userId: user.id },
-      select: { id: true }
-    });
-    if (!trainer) {
-      return reply.code(403).send({ error: "trainer_profile_not_found" });
-    }
-
     const group = await prisma.group.findFirst({
       where: {
         id: groupId,
-        trainerId: trainer.id
+        trainerId: auth.trainerId
       },
       select: { id: true, name: true }
     });
@@ -116,7 +78,7 @@ export async function registerInviteRoutes(app: FastifyInstance) {
 
     await prisma.auditLog.create({
       data: {
-        actorUserId: user.id,
+        actorUserId: auth.userId,
         action: "invite_created",
         entityType: "invite",
         entityId: invite.id,
@@ -136,8 +98,8 @@ export async function registerInviteRoutes(app: FastifyInstance) {
   });
 
   app.post("/invites/revoke", async (request, reply) => {
-    const user = await requireTrainer(request, reply);
-    if (!user) return;
+    const auth = await requireTrainer(request, reply);
+    if (!auth) return;
 
     const parsed = revokeInviteSchema.safeParse(request.body);
     if (!parsed.success) {
@@ -146,19 +108,11 @@ export async function registerInviteRoutes(app: FastifyInstance) {
 
     const { inviteId } = parsed.data;
 
-    const trainer = await prisma.trainer.findUnique({
-      where: { userId: user.id },
-      select: { id: true }
-    });
-    if (!trainer) {
-      return reply.code(403).send({ error: "trainer_profile_not_found" });
-    }
-
     const invite = await prisma.invite.findFirst({
       where: {
         id: inviteId,
         group: {
-          trainerId: trainer.id
+          trainerId: auth.trainerId
         }
       },
       select: {
@@ -184,7 +138,7 @@ export async function registerInviteRoutes(app: FastifyInstance) {
 
     await prisma.auditLog.create({
       data: {
-        actorUserId: user.id,
+        actorUserId: auth.userId,
         action: "invite_revoked",
         entityType: "invite",
         entityId: invite.id,

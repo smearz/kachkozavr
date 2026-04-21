@@ -3,6 +3,7 @@ import cors from "@fastify/cors";
 import jwt from "@fastify/jwt";
 import { registerAuthRoutes } from "./modules/auth.js";
 import { registerInviteRoutes } from "./modules/invites.js";
+import { registerProgramRoutes } from "./modules/programs.js";
 
 const app = Fastify({ logger: true });
 
@@ -17,6 +18,7 @@ await app.register(jwt, {
 
 await registerAuthRoutes(app);
 await registerInviteRoutes(app);
+await registerProgramRoutes(app);
 
 app.get("/health", async () => {
   return {

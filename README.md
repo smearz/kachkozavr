@@ -39,6 +39,11 @@ MVP для control-loop продукта тренера и ученика.
   - `POST /invites/revoke` (trainer only)
   - `GET /invites/validate?token=...`
   - `POST /invites/join` (student signup по invite token)
+- Добавлены program/assignment endpoints:
+  - `POST /programs` (trainer only)
+  - `GET /programs` (trainer only)
+  - `POST /assignments` (trainer only, one active assignment per student)
+  - `GET /students/me/current-workout` (student only)
 
 ## Процесс работы с задачами
 
