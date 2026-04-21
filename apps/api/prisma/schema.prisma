@@ -1,0 +1,272 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  trainer
+  student
+}
+
+enum InviteStatus {
+  active
+  used
+  revoked
+  expired
+}
+
+enum WorkoutStatus {
+  completed
+  partial
+  skipped
+}
+
+enum ExerciseExecutionStatus {
+  done
+  skipped
+  modified
+}
+
+enum TriggerStatus {
+  active
+  resolved
+}
+
+enum NotificationStatus {
+  pending
+  delivered
+  failed
+}
+
+model User {
+  id             String           @id @default(cuid())
+  role           UserRole
+  email          String           @unique
+  passwordHash   String
+  displayName    String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  trainer        Trainer?
+  student        Student?
+  auditLogs      AuditLog[]
+  notifications  Notification[]
+}
+
+model Trainer {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  groups    Group[]
+  programs  Program[]
+}
+
+model Student {
+  id          String             @id @default(cuid())
+  userId      String             @unique
+  createdAt   DateTime           @default(now())
+  user        User               @relation(fields: [userId], references: [id])
+  memberships GroupMembership[]
+  assignments Assignment[]
+  reports     TrainingReport[]
+  triggers    Trigger[]
+}
+
+model Group {
+  id          String            @id @default(cuid())
+  trainerId   String
+  name        String
+  createdAt   DateTime          @default(now())
+  trainer     Trainer           @relation(fields: [trainerId], references: [id])
+  memberships GroupMembership[]
+  invites     Invite[]
+}
+
+model GroupMembership {
+  id         String   @id @default(cuid())
+  groupId    String
+  studentId  String
+  createdAt  DateTime @default(now())
+  group      Group    @relation(fields: [groupId], references: [id])
+  student    Student  @relation(fields: [studentId], references: [id])
+
+  @@unique([groupId, studentId])
+}
+
+model Invite {
+  id            String       @id @default(cuid())
+  groupId        String
+  tokenHash      String       @unique
+  status         InviteStatus @default(active)
+  expiresAt      DateTime
+  maxUses        Int          @default(1)
+  usedCount      Int          @default(0)
+  usedAt         DateTime?
+  createdAt      DateTime     @default(now())
+  revokedAt      DateTime?
+  group          Group        @relation(fields: [groupId], references: [id])
+}
+
+model Exercise {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  category    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Program {
+  id          String      @id @default(cuid())
+  trainerId   String
+  name        String
+  description String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  trainer     Trainer     @relation(fields: [trainerId], references: [id])
+  workouts    Workout[]
+  assignments Assignment[]
+}
+
+model Workout {
+  id          String            @id @default(cuid())
+  programId   String
+  title       String
+  dayOrder    Int
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  program     Program           @relation(fields: [programId], references: [id])
+  exercises   WorkoutExercise[]
+}
+
+model WorkoutExercise {
+  id              String   @id @default(cuid())
+  workoutId        String
+  exerciseId       String
+  position         Int
+  plannedWeight    Float?
+  plannedReps      Int?
+  notes            String?
+  workout          Workout   @relation(fields: [workoutId], references: [id])
+  exercise         Exercise  @relation(fields: [exerciseId], references: [id])
+  exerciseExecutions ExerciseExecution[]
+}
+
+model Assignment {
+  id           String           @id @default(cuid())
+  programId    String
+  studentId    String
+  isActive     Boolean          @default(true)
+  startsAt     DateTime?
+  endsAt       DateTime?
+  createdAt    DateTime         @default(now())
+  program      Program          @relation(fields: [programId], references: [id])
+  student      Student          @relation(fields: [studentId], references: [id])
+  reports      TrainingReport[]
+
+  @@index([studentId, isActive])
+}
+
+model TrainingReport {
+  id             String              @id @default(cuid())
+  assignmentId   String
+  studentId      String
+  workoutStatus  WorkoutStatus
+  comment        String?
+  submittedAt    DateTime            @default(now())
+  assignment     Assignment          @relation(fields: [assignmentId], references: [id])
+  student        Student             @relation(fields: [studentId], references: [id])
+  wellbeing      Wellbeing?
+  executions     ExerciseExecution[]
+  attachments    ReportAttachment[]
+}
+
+model ExerciseExecution {
+  id                 String                  @id @default(cuid())
+  reportId           String
+  workoutExerciseId  String
+  status             ExerciseExecutionStatus
+  actualWeight       Float?
+  actualReps         Int?
+  comment            String?
+  report             TrainingReport          @relation(fields: [reportId], references: [id])
+  workoutExercise    WorkoutExercise         @relation(fields: [workoutExerciseId], references: [id])
+
+  @@index([reportId])
+}
+
+model Wellbeing {
+  id          String         @id @default(cuid())
+  reportId    String         @unique
+  score       Int
+  label       String?
+  createdAt   DateTime       @default(now())
+  report      TrainingReport @relation(fields: [reportId], references: [id])
+}
+
+model ReportAttachment {
+  id          String         @id @default(cuid())
+  reportId    String
+  objectKey   String         @unique
+  mimeType    String
+  sizeBytes   Int
+  createdAt   DateTime       @default(now())
+  report      TrainingReport @relation(fields: [reportId], references: [id])
+
+  @@index([reportId])
+}
+
+model Trigger {
+  id             String        @id @default(cuid())
+  studentId      String
+  ruleCode       String
+  status         TriggerStatus @default(active)
+  explanation    Json
+  activatedAt    DateTime      @default(now())
+  resolvedAt     DateTime?
+  resolvedById   String?
+  resolutionNote String?
+  student        Student       @relation(fields: [studentId], references: [id])
+
+  @@index([studentId, status])
+}
+
+model Notification {
+  id         String             @id @default(cuid())
+  userId      String
+  type        String
+  payload     Json
+  status      NotificationStatus @default(pending)
+  createdAt   DateTime           @default(now())
+  deliveredAt DateTime?
+  user        User               @relation(fields: [userId], references: [id])
+
+  @@index([userId, status])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String?
+  action      String
+  entityType  String
+  entityId    String
+  payload     Json
+  createdAt   DateTime @default(now())
+  actor       User?    @relation(fields: [actorUserId], references: [id])
+
+  @@index([entityType, entityId])
+}
+
+model DomainEvent {
+  id          String   @id @default(cuid())
+  eventType   String
+  aggregateId String?
+  payload     Json
+  createdAt   DateTime @default(now())
+
+  @@index([eventType, createdAt])
+}

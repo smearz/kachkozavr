@@ -10,7 +10,15 @@ MVP для control-loop продукта тренера и ученика.
 
 1. Поднять инфраструктуру:
    - `pnpm compose:up`
-2. Запустить сервисы по отдельности:
+2. Установить зависимости:
+   - `pnpm install`
+3. Подготовить переменные:
+   - скопировать `.env.example` в `.env`
+4. Для API с Prisma:
+   - `pnpm --filter @kachkozavr/api prisma:generate`
+   - `pnpm --filter @kachkozavr/api prisma:migrate:dev`
+   - `pnpm --filter @kachkozavr/api prisma:seed`
+5. Запустить сервисы по отдельности:
    - `pnpm dev:api`
    - `pnpm dev:web`
    - `pnpm dev:worker`
