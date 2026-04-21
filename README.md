@@ -44,8 +44,9 @@ MVP для control-loop продукта тренера и ученика.
 ## Trigger pipeline v1
 
 - API enqueue: `report-submitted` job при submit отчета.
-- Worker rule: `no_report_7d` (activate/auto-resolve).
-- Периодический reconcile: каждые 6 часов.
+- Worker использует централизованный `events` block (`config + dispatcher + trigger-engine`).
+- Rule v1: `no_report_7d` (activate/auto-resolve).
+- Периодический reconcile: каждые 6 часов (через registry в events config).
 
 ## Media storage (MVP)
 
