@@ -22,6 +22,7 @@ jobs:
       - name: Seed labels and issues
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.PROJECTS_TOKEN }}
           script: |
             const fs = require("fs");
 
