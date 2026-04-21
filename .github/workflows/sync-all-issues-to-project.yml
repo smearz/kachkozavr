@@ -31,7 +31,7 @@ jobs:
               return;
             }
 
-            const match = projectUrl.match(/^https:\/\/github\.com\/(users|orgs)\/([^/]+)\/projects\/(\d+)$/);
+            const match = projectUrl.match(/^https:\/\/github\.com\/(users|orgs)\/([^/]+)\/projects\/(\d+)(?:\/views\/\d+)?$/);
             if (!match) {
               core.setFailed(`Unsupported PROJECT_V2_URL format: ${projectUrl}`);
               return;
