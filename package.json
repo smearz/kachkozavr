@@ -1,0 +1,16 @@
+{
+  "name": "kachkozavr",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.12.1",
+  "scripts": {
+    "dev:web": "pnpm --filter @kachkozavr/web dev",
+    "dev:api": "pnpm --filter @kachkozavr/api dev",
+    "dev:worker": "pnpm --filter @kachkozavr/worker dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "compose:up": "docker compose -f infra/docker/docker-compose.yml up -d",
+    "compose:down": "docker compose -f infra/docker/docker-compose.yml down"
+  }
+}
