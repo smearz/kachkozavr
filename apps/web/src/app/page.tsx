@@ -11,6 +11,7 @@ export default function Page() {
         <Link href="/trainer/auth">/trainer/auth</Link>
         <Link href="/trainer/groups">/trainer/groups</Link>
         <Link href="/trainer/attention">/trainer/attention</Link>
+        <Link href="/trainer/evaluation">/trainer/evaluation</Link>
         <Link href="/join">/join</Link>
       </section>
     </main>

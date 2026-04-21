@@ -1,32 +1,32 @@
 # AGENT HANDOFF (Kachkozavr MVP)
 
-## 1) Что это за проект
+## 1) Product Snapshot
 
-- Продукт: control-loop для trainer/student.
-- Цикл: assignment -> execution -> report -> trigger evaluation -> trainer action.
-- Формат: mobile-first web + API + worker.
+- Product type: control-loop for trainer/student.
+- Core loop: assignment -> execution -> report -> trigger evaluation -> trainer action.
+- Current delivery format: mobile-first web + API + worker.
 
-## 2) Текущий стек
+## 2) Current Stack
 
 - Web: Next.js (app router), TypeScript.
-- API: Fastify, TypeScript, JWT auth, Prisma.
-- Worker: BullMQ + Redis, Prisma.
+- API: Fastify, JWT auth, Prisma.
+- Worker: BullMQ + Redis + Prisma.
 - DB: PostgreSQL.
-- Media: filesystem provider (не MinIO).
-- Infra local: docker-compose (Postgres + Redis).
+- Media: filesystem provider (`MEDIA_ROOT`), private access via API.
+- Local infra: docker-compose with Postgres + Redis.
 
-## 3) Ключевые архитектурные решения
+## 3) Important Architecture Decisions
 
-- Modular monolith (не microservices).
-- Trigger processing вынесен в централизованный `events` block в worker:
+- Modular monolith (not microservices).
+- Trigger logic centralized in worker `events` block:
   - `apps/worker/src/events/config.ts`
   - `apps/worker/src/events/dispatcher.ts`
   - `apps/worker/src/events/trigger-engine.ts`
-- Media для MVP: private files через API (`MEDIA_ROOT`), а не external object storage.
+- Media kept simple for MVP: filesystem storage, no MinIO dependency in primary path.
 
-## 4) Что уже реализовано (фактически)
+## 4) Implemented API Surface
 
-### Auth/Invite/Join
+### Auth / Invite / Membership
 - `POST /auth/trainer/signup`
 - `POST /auth/login`
 - `POST /groups`
@@ -36,77 +36,81 @@
 - `GET /invites/validate?token=...`
 - `POST /invites/join`
 
-### Programs/Assignments
+### Programs / Assignments
 - `POST /programs`
 - `GET /programs`
-- `POST /assignments` (single active assignment per student)
+- `POST /assignments`
 - `GET /students/me/current-workout`
 
-### Reports/Media
-- `POST /reports/submit` with idempotency key
-- `POST /reports/:reportId/attachments` (multipart, filesystem)
-- `GET /attachments/:attachmentId/content` (private access checks)
+### Reports / Media
+- `POST /reports/submit` (idempotency key)
+- `POST /reports/:reportId/attachments` (multipart -> filesystem)
+- `GET /attachments/:attachmentId/content` (private read)
 
-### Triggers/Queue
-- API enqueue on report submit (`report-submitted`)
-- Worker pipeline + recurring reconcile
-- Rule implemented: `no_report_7d` (activate + auto-resolve)
-- Trainer trigger endpoints:
-  - `GET /trainer/attention-queue`
-  - `POST /trainer/triggers/:triggerId/resolve`
+### Triggers / Trainer Ops
+- `GET /trainer/attention-queue`
+- `POST /trainer/triggers/:triggerId/resolve`
+- Worker rules implemented:
+  - `no_report_7d`
+  - `two_skipped_in_row`
+  - `wellbeing_low_n_times`
 
-### Web UI (minimum)
+### Program Evaluation
+- `GET /trainer/students/:studentId/program-evaluation`
+  - adherence metrics
+  - plan-vs-actual deltas
+  - simple trend direction
+
+## 5) Implemented Web Screens
+
 - `/trainer/auth`
 - `/trainer/groups`
 - `/join`
 - `/trainer/attention`
+- `/trainer/evaluation`
 
-## 5) Важные фиксы, которые уже внесены
+## 6) Critical Fixes Already Applied
 
-- Queue publish fail-fast в API (иначе были потенциальные зависания).
-- API smoke: добавлены жесткие curl timeouts + job timeout.
-- Race-safe report idempotency (`P2002` fallback).
-- Join race mapping: controlled 400/404 вместо 500.
-- `no_report_7d` reconcile ограничен активными assignment.
-- JWT hardening: без `JWT_SECRET` вне `development` API не стартует.
+- Queue publish now fail-fast to avoid hanging report submit.
+- API smoke workflow has strict curl timeouts + job timeout.
+- Race-safe idempotency fallback for duplicate report submit (`P2002` path).
+- Invite join race mapped to controlled 400/404 instead of 500.
+- Reconcile now scopes to students with active assignments.
+- JWT secret hardened: required outside `NODE_ENV=development`.
 
-## 6) CI/Automation
+## 7) CI / Automation
 
-- `API Smoke (Core Loop Slice)` workflow покрывает core API slice, включая attachment upload/read.
-- Auto-close issues по коммит marker:
+- Workflow: `API Smoke (Core Loop Slice)` covers auth/invite/program/assignment/report/attachment path.
+- Issues auto-close supported via commit marker:
   - `Issue-Title: <exact issue title>`
-- Project sync workflows уже добавлены и настраивались ранее.
+- Project sync workflows are in repo and used.
 
-## 7) Процесс работы (обязательный)
+## 8) Workflow Rules (Must Keep)
 
-- Каждое изменение связывать с задачей GitHub Project/Issue.
-- Если нужна новая логическая задача -> сначала добавить в `project/mvp-issues.json`, запушить, потом делать реализацию.
-- Коммит должен содержать `Issue-Title: ...` для автозакрытия.
-- Комментарии/описания для пользователя — на русском (термины/сущности на английском допустимы).
+- Every meaningful change should map to GitHub Project task/issue.
+- If task does not exist, add it to `project/mvp-issues.json` first.
+- Commit messages should include `Issue-Title: ...` for auto-close.
+- User-facing progress/comments in Russian (English terms for entities are fine).
 
-## 8) Что осталось сделать (основное)
+## 9) Remaining High-Value Tasks
 
-- Trigger rules:
-  - `two_skipped_in_row`
-  - `wellbeing_low_n_times`
-- Unified explainability payload conventions для всех trigger rules.
-- Program evaluation service (adherence + plan-vs-actual trend).
 - In-app notifications for trigger activation.
-- Rate limiting (auth/invite/upload/report).
-- Runbook/backup-restore/release docs.
-- E2E smoke tests beyond current API workflow.
+- Rate limiting for auth/invite/upload/report endpoints.
+- Extend domain events consistency across all modules.
+- Full runbook (local run, backup/restore, release checklist).
+- Broader E2E coverage beyond current smoke.
 
-## 9) Технические нюансы / осторожности
+## 10) Known Environment Gotchas
 
-- `README.md` ранее ломался по кодировке; текущая версия переписана. Следить за UTF-8.
-- В PowerShell иногда проблемы с lock/permissions в `.git`; при необходимости использовать escalation.
-- В этом окружении локально не всегда доступен docker; CI workflow часто надежнее для e2e-проверок.
+- Watch encoding issues (UTF-8) in markdown docs.
+- Sometimes lock/permission issues in `.git` via PowerShell; escalation may be needed.
+- Local environment may miss Docker access; CI workflow is more reliable for E2E confirmation.
 
-## 10) Быстрый старт для следующего хода
+## 11) Next-Step Protocol
 
-1. Проверить `git status` (должен быть clean).
-2. Выбрать следующий item из backlog.
-3. Если item новый — добавить в `project/mvp-issues.json`, запушить.
-4. Реализовать, прогнать typecheck/build (`api/web/worker` по нужным пакетам).
-5. Коммит с `Issue-Title`.
-6. Короткий отчет: что сделано, что проверено, что дальше.
+1. Check `git status` is clean.
+2. Pick next backlog item.
+3. Implement.
+4. Run typecheck/build for affected apps.
+5. Commit with `Issue-Title`.
+6. Push and report done/next.

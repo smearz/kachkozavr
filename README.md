@@ -40,11 +40,13 @@ MVP для control-loop продукта тренера и ученика.
 - `GET /attachments/:attachmentId/content` (private read)
 - `GET /trainer/attention-queue`
 - `POST /trainer/triggers/:triggerId/resolve`
+- `GET /trainer/students/:studentId/program-evaluation`
 
 Web:
 - `/trainer/auth`
 - `/trainer/groups`
 - `/trainer/attention`
+- `/trainer/evaluation`
 - `/join`
 
 ## Trigger pipeline v1

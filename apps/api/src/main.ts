@@ -9,6 +9,7 @@ import { registerProgramRoutes } from "./modules/programs.js";
 import { registerReportRoutes } from "./modules/reports.js";
 import { registerMediaRoutes } from "./modules/media.js";
 import { registerTriggerRoutes } from "./modules/triggers.js";
+import { registerEvaluationRoutes } from "./modules/evaluation.js";
 
 const app = Fastify({ logger: true });
 const nodeEnv = process.env.NODE_ENV ?? "development";
@@ -41,6 +42,7 @@ await registerProgramRoutes(app);
 await registerReportRoutes(app);
 await registerMediaRoutes(app);
 await registerTriggerRoutes(app);
+await registerEvaluationRoutes(app);
 
 app.get("/health", async () => {
   return {
