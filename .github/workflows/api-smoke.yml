@@ -1,0 +1,118 @@
+name: API Smoke (Auth + Invite + Join)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "apps/api/**"
+      - "package.json"
+      - "pnpm-workspace.yaml"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/api-smoke.yml"
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: kachkozavr
+          POSTGRES_USER: kachkozavr
+          POSTGRES_PASSWORD: kachkozavr
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U kachkozavr -d kachkozavr"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      DATABASE_URL: postgresql://kachkozavr:kachkozavr@localhost:5432/kachkozavr
+      JWT_SECRET: ci-smoke-secret
+      PORT: 4000
+      HOST: 127.0.0.1
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: corepack pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client and sync schema
+        working-directory: apps/api
+        run: |
+          corepack pnpm prisma:generate
+          corepack pnpm exec prisma db push --skip-generate
+
+      - name: Start API
+        run: |
+          corepack pnpm --filter @kachkozavr/api dev > api.log 2>&1 &
+          echo $! > api.pid
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:4000/health > /dev/null; then
+              echo "API is up"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "API failed to start"
+          cat api.log
+          exit 1
+
+      - name: Run smoke flow
+        run: |
+          trainer_signup=$(curl -fsS -X POST http://127.0.0.1:4000/auth/trainer/signup \
+            -H "content-type: application/json" \
+            -d '{"email":"trainer-smoke@example.com","password":"StrongPass123!","displayName":"Smoke Trainer"}')
+          echo "$trainer_signup"
+
+          trainer_login=$(curl -fsS -X POST http://127.0.0.1:4000/auth/login \
+            -H "content-type: application/json" \
+            -d '{"email":"trainer-smoke@example.com","password":"StrongPass123!"}')
+          trainer_token=$(echo "$trainer_login" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).token));")
+
+          group_id="grp_smoke_$(date +%s)"
+          group_create_sql="INSERT INTO \"Group\" (id, \"trainerId\", name, \"createdAt\") SELECT '$group_id', t.id, 'Smoke Group', NOW() FROM \"Trainer\" t JOIN \"User\" u ON u.id=t.\"userId\" WHERE u.email='trainer-smoke@example.com';"
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "$group_create_sql"
+
+          invite_create=$(curl -fsS -X POST http://127.0.0.1:4000/invites \
+            -H "content-type: application/json" \
+            -H "authorization: Bearer $trainer_token" \
+            -d "{\"groupId\":\"$group_id\",\"expiresInHours\":48,\"maxUses\":1}")
+          invite_token=$(echo "$invite_create" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).token));")
+
+          invite_validate_before=$(curl -fsS "http://127.0.0.1:4000/invites/validate?token=$invite_token")
+          echo "$invite_validate_before" | grep '"valid":true'
+
+          student_join=$(curl -fsS -X POST http://127.0.0.1:4000/invites/join \
+            -H "content-type: application/json" \
+            -d "{\"token\":\"$invite_token\",\"email\":\"student-smoke@example.com\",\"password\":\"StrongPass123!\",\"displayName\":\"Smoke Student\"}")
+          echo "$student_join" | grep '"role":"student"'
+
+          invite_validate_after=$(curl -fsS "http://127.0.0.1:4000/invites/validate?token=$invite_token")
+          echo "$invite_validate_after" | grep '"valid":false'
+          echo "$invite_validate_after" | grep '"reason":"used_out"'
+
+      - name: Print API log on failure
+        if: failure()
+        run: cat api.log
+
+      - name: Stop API
+        if: always()
+        run: |
+          if [ -f api.pid ]; then kill "$(cat api.pid)" || true; fi
