@@ -95,85 +95,114 @@ export async function registerReportRoutes(app: FastifyInstance) {
       }
     }
 
-    const result = await prisma.$transaction(async (tx: any) => {
-      const report = await tx.trainingReport.create({
-        data: {
-          assignmentId: input.assignmentId,
-          studentId: auth.studentId,
-          idempotencyKey: input.idempotencyKey,
-          workoutStatus: input.workoutStatus,
-          comment: input.comment
-        },
-        select: {
-          id: true,
-          assignmentId: true,
-          studentId: true,
-          idempotencyKey: true,
-          workoutStatus: true,
-          comment: true,
-          submittedAt: true
-        }
-      });
-
-      if (input.wellbeing) {
-        await tx.wellbeing.create({
+    let result: any;
+    try {
+      result = await prisma.$transaction(async (tx: any) => {
+        const report = await tx.trainingReport.create({
           data: {
-            reportId: report.id,
-            score: input.wellbeing.score,
-            label: input.wellbeing.label
+            assignmentId: input.assignmentId,
+            studentId: auth.studentId,
+            idempotencyKey: input.idempotencyKey,
+            workoutStatus: input.workoutStatus,
+            comment: input.comment
+          },
+          select: {
+            id: true,
+            assignmentId: true,
+            studentId: true,
+            idempotencyKey: true,
+            workoutStatus: true,
+            comment: true,
+            submittedAt: true
           }
         });
-      }
 
-      await tx.exerciseExecution.createMany({
-        data: input.executions.map((e) => ({
-          reportId: report.id,
-          workoutExerciseId: e.workoutExerciseId,
-          status: e.status,
-          actualWeight: e.actualWeight,
-          actualReps: e.actualReps,
-          comment: e.comment
-        }))
-      });
+        if (input.wellbeing) {
+          await tx.wellbeing.create({
+            data: {
+              reportId: report.id,
+              score: input.wellbeing.score,
+              label: input.wellbeing.label
+            }
+          });
+        }
 
-      await tx.domainEvent.create({
-        data: {
-          eventType: "ReportSubmitted",
-          aggregateId: report.id,
-          payload: {
+        await tx.exerciseExecution.createMany({
+          data: input.executions.map((e) => ({
             reportId: report.id,
-            studentId: auth.studentId,
-            assignmentId: input.assignmentId,
-            workoutStatus: input.workoutStatus,
-            executionCount: input.executions.length
+            workoutExerciseId: e.workoutExerciseId,
+            status: e.status,
+            actualWeight: e.actualWeight,
+            actualReps: e.actualReps,
+            comment: e.comment
+          }))
+        });
+
+        await tx.domainEvent.create({
+          data: {
+            eventType: "ReportSubmitted",
+            aggregateId: report.id,
+            payload: {
+              reportId: report.id,
+              studentId: auth.studentId,
+              assignmentId: input.assignmentId,
+              workoutStatus: input.workoutStatus,
+              executionCount: input.executions.length
+            }
           }
-        }
-      });
+        });
 
-      const fullReport = await tx.trainingReport.findUnique({
-        where: { id: report.id },
-        include: {
-          wellbeing: true,
-          executions: true
-        }
-      });
+        const fullReport = await tx.trainingReport.findUnique({
+          where: { id: report.id },
+          include: {
+            wellbeing: true,
+            executions: true
+          }
+        });
 
-      return fullReport;
-    });
+        return fullReport;
+      });
+    } catch (error: any) {
+      // Race-safe idempotency fallback for concurrent duplicate submits.
+      if (error?.code === "P2002") {
+        const replay = await prisma.trainingReport.findUnique({
+          where: {
+            studentId_idempotencyKey: {
+              studentId: auth.studentId,
+              idempotencyKey: input.idempotencyKey
+            }
+          },
+          include: {
+            wellbeing: true,
+            executions: true
+          }
+        });
+        if (replay) {
+          return reply.send({
+            idempotentReplay: true,
+            report: replay
+          });
+        }
+      }
+      throw error;
+    }
 
     try {
-      await triggerQueue.add(
-        "report-submitted",
-        {
-          reportId: result.id,
-          studentId: auth.studentId,
-          assignmentId: input.assignmentId
-        },
-        {
-          removeOnComplete: 50,
-          removeOnFail: 50
-        }
-      );
+      await Promise.race([
+        triggerQueue.add(
+          "report-submitted",
+          {
+            reportId: result.id,
+            studentId: auth.studentId,
+            assignmentId: input.assignmentId
+          },
+          {
+            removeOnComplete: 50,
+            removeOnFail: 50
+          }
+        ),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("queue_publish_timeout")), 1200))
+      ]);
     } catch (error) {
       request.log.warn({ error }, "trigger_queue_enqueue_failed");
     }

@@ -58,13 +58,16 @@ export async function evaluateNoReport7dForStudent(studentId: string): Promise<v
 }
 
 export async function reconcileNoReport7dForAllStudents(): Promise<number> {
-  const students = await prisma.student.findMany({
-    select: { id: true }
+  const activeAssignments = await prisma.assignment.findMany({
+    where: { isActive: true },
+    select: { studentId: true }
   });
 
-  for (const student of students) {
-    await evaluateNoReport7dForStudent(student.id);
+  const uniqueStudentIds = [...new Set<string>(activeAssignments.map((a: any) => String(a.studentId)))];
+
+  for (const studentId of uniqueStudentIds) {
+    await evaluateNoReport7dForStudent(studentId);
   }
 
-  return students.length;
+  return uniqueStudentIds.length;
 }

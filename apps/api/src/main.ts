@@ -9,6 +9,12 @@ import { registerReportRoutes } from "./modules/reports.js";
 import { registerMediaRoutes } from "./modules/media.js";
 
 const app = Fastify({ logger: true });
+const nodeEnv = process.env.NODE_ENV ?? "development";
+const jwtSecret = process.env.JWT_SECRET;
+
+if (!jwtSecret && nodeEnv !== "development") {
+  throw new Error("JWT_SECRET is required outside development environment.");
+}
 
 await app.register(cors, {
   origin: true,
@@ -16,7 +22,7 @@ await app.register(cors, {
 });
 
 await app.register(jwt, {
-  secret: process.env.JWT_SECRET ?? "local-dev-jwt-secret"
+  secret: jwtSecret ?? "local-dev-jwt-secret"
 });
 
 await app.register(multipart, {

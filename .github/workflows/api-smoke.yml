@@ -14,6 +14,7 @@ on:
 jobs:
   smoke:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     services:
       postgres:
         image: postgres:16-alpine
@@ -64,7 +65,7 @@ jobs:
           corepack pnpm --filter @kachkozavr/api dev > api.log 2>&1 &
           echo $! > api.pid
           for i in {1..30}; do
-            if curl -fsS http://127.0.0.1:4000/health > /dev/null; then
+            if curl --fail-with-body --silent --show-error --connect-timeout 2 --max-time 3 http://127.0.0.1:4000/health > /dev/null; then
               echo "API is up"
               exit 0
             fi
@@ -76,12 +77,14 @@ jobs:
 
       - name: Run smoke flow
         run: |
-          trainer_signup=$(curl -fsS -X POST http://127.0.0.1:4000/auth/trainer/signup \
+          CURL="curl --fail-with-body --silent --show-error --connect-timeout 5 --max-time 20"
+
+          trainer_signup=$($CURL -X POST http://127.0.0.1:4000/auth/trainer/signup \
             -H "content-type: application/json" \
             -d '{"email":"trainer-smoke@example.com","password":"StrongPass123!","displayName":"Smoke Trainer"}')
           echo "$trainer_signup"
 
-          trainer_login=$(curl -fsS -X POST http://127.0.0.1:4000/auth/login \
+          trainer_login=$($CURL -X POST http://127.0.0.1:4000/auth/login \
             -H "content-type: application/json" \
             -d '{"email":"trainer-smoke@example.com","password":"StrongPass123!"}')
           trainer_token=$(echo "$trainer_login" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).token));")
@@ -90,22 +93,22 @@ jobs:
           group_create_sql="INSERT INTO \"Group\" (id, \"trainerId\", name, \"createdAt\") SELECT '$group_id', t.id, 'Smoke Group', NOW() FROM \"Trainer\" t JOIN \"User\" u ON u.id=t.\"userId\" WHERE u.email='trainer-smoke@example.com';"
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "$group_create_sql"
 
-          invite_create=$(curl -fsS -X POST http://127.0.0.1:4000/invites \
+          invite_create=$($CURL -X POST http://127.0.0.1:4000/invites \
             -H "content-type: application/json" \
             -H "authorization: Bearer $trainer_token" \
             -d "{\"groupId\":\"$group_id\",\"expiresInHours\":48,\"maxUses\":1}")
           invite_token=$(echo "$invite_create" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).token));")
 
-          invite_validate_before=$(curl -fsS "http://127.0.0.1:4000/invites/validate?token=$invite_token")
+          invite_validate_before=$($CURL "http://127.0.0.1:4000/invites/validate?token=$invite_token")
           echo "$invite_validate_before" | grep '"valid":true'
 
-          student_join=$(curl -fsS -X POST http://127.0.0.1:4000/invites/join \
+          student_join=$($CURL -X POST http://127.0.0.1:4000/invites/join \
             -H "content-type: application/json" \
             -d "{\"token\":\"$invite_token\",\"email\":\"student-smoke@example.com\",\"password\":\"StrongPass123!\",\"displayName\":\"Smoke Student\"}")
           echo "$student_join" | grep '"role":"student"'
           student_token=$(echo "$student_join" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).token));")
 
-          invite_validate_after=$(curl -fsS "http://127.0.0.1:4000/invites/validate?token=$invite_token")
+          invite_validate_after=$($CURL "http://127.0.0.1:4000/invites/validate?token=$invite_token")
           echo "$invite_validate_after" | grep '"valid":false'
           echo "$invite_validate_after" | grep '"reason":"used_out"'
 
@@ -113,24 +116,24 @@ jobs:
           exercise_id="ex_smoke_$(date +%s)"
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO \"Exercise\" (id, slug, name, category, \"createdAt\", \"updatedAt\") VALUES ('$exercise_id','smoke-pushup','Smoke Pushup','upper',NOW(),NOW());"
 
-          program_create=$(curl -fsS -X POST http://127.0.0.1:4000/programs \
+          program_create=$($CURL -X POST http://127.0.0.1:4000/programs \
             -H "content-type: application/json" \
             -H "authorization: Bearer $trainer_token" \
             -d "{\"name\":\"Smoke Program\",\"workouts\":[{\"title\":\"Workout A\",\"dayOrder\":1,\"exercises\":[{\"exerciseId\":\"$exercise_id\",\"position\":1,\"plannedReps\":10}]}]}")
           program_id=$(echo "$program_create" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).program.id));")
 
-          assignment_create=$(curl -fsS -X POST http://127.0.0.1:4000/assignments \
+          assignment_create=$($CURL -X POST http://127.0.0.1:4000/assignments \
             -H "content-type: application/json" \
             -H "authorization: Bearer $trainer_token" \
             -d "{\"programId\":\"$program_id\",\"studentId\":\"$student_id\"}")
           echo "$assignment_create" | grep '"isActive":true'
 
-          current_workout=$(curl -fsS http://127.0.0.1:4000/students/me/current-workout \
+          current_workout=$($CURL http://127.0.0.1:4000/students/me/current-workout \
             -H "authorization: Bearer $student_token")
           assignment_id=$(echo "$current_workout" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).assignment.id));")
           workout_exercise_id=$(echo "$current_workout" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).assignment.program.workouts[0].exercises[0].id));")
 
-          report_submit=$(curl -fsS -X POST http://127.0.0.1:4000/reports/submit \
+          report_submit=$($CURL -X POST http://127.0.0.1:4000/reports/submit \
             -H "content-type: application/json" \
             -H "authorization: Bearer $student_token" \
             -d "{\"assignmentId\":\"$assignment_id\",\"idempotencyKey\":\"smoke-key-001\",\"workoutStatus\":\"completed\",\"executions\":[{\"workoutExerciseId\":\"$workout_exercise_id\",\"status\":\"done\",\"actualReps\":10}],\"wellbeing\":{\"score\":4,\"label\":\"ok\"}}")
@@ -139,12 +142,12 @@ jobs:
           png_path="/tmp/smoke.png"
           printf '%s' 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7+KXcAAAAASUVORK5CYII=' | base64 -d > "$png_path"
 
-          attachment_create=$(curl -fsS -X POST "http://127.0.0.1:4000/reports/$report_id/attachments" \
+          attachment_create=$($CURL -X POST "http://127.0.0.1:4000/reports/$report_id/attachments" \
             -H "authorization: Bearer $student_token" \
             -F "file=@$png_path;type=image/png")
           attachment_id=$(echo "$attachment_create" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).attachment.id));")
 
-          curl -fsS "http://127.0.0.1:4000/attachments/$attachment_id/content" \
+          $CURL "http://127.0.0.1:4000/attachments/$attachment_id/content" \
             -H "authorization: Bearer $trainer_token" \
             -o /tmp/downloaded_smoke.png
           test -s /tmp/downloaded_smoke.png

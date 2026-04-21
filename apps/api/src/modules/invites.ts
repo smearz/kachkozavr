@@ -249,125 +249,136 @@ export async function registerInviteRoutes(app: FastifyInstance) {
       type: argon2.argon2id
     });
 
-    const result = await prisma.$transaction(async (tx: any) => {
-      const freshInvite = await tx.invite.findUnique({
-        where: { id: invite.id },
-        select: {
-          id: true,
-          status: true,
-          expiresAt: true,
-          maxUses: true,
-          usedCount: true,
-          groupId: true
-        }
-      });
-
-      if (!freshInvite) throw new Error("invite_not_found");
-
-      const freshExpired = freshInvite.expiresAt.getTime() <= Date.now();
-      const freshUsedOut = freshInvite.usedCount >= freshInvite.maxUses;
-      const freshRevoked = freshInvite.status === "revoked";
-      const freshActive = freshInvite.status === "active";
-      if (!freshActive || freshExpired || freshUsedOut || freshRevoked) {
-        throw new Error("invite_not_usable");
-      }
-
-      const user = await tx.user.create({
-        data: {
-          role: "student",
-          email,
-          passwordHash,
-          displayName,
-          student: {
-            create: {}
+    let result: any;
+    try {
+      result = await prisma.$transaction(async (tx: any) => {
+        const freshInvite = await tx.invite.findUnique({
+          where: { id: invite.id },
+          select: {
+            id: true,
+            status: true,
+            expiresAt: true,
+            maxUses: true,
+            usedCount: true,
+            groupId: true
           }
-        },
-        select: {
-          id: true,
-          email: true,
-          role: true,
-          displayName: true,
-          student: {
-            select: { id: true }
-          }
+        });
+
+        if (!freshInvite) throw new Error("invite_not_found");
+
+        const freshExpired = freshInvite.expiresAt.getTime() <= Date.now();
+        const freshUsedOut = freshInvite.usedCount >= freshInvite.maxUses;
+        const freshRevoked = freshInvite.status === "revoked";
+        const freshActive = freshInvite.status === "active";
+        if (!freshActive || freshExpired || freshUsedOut || freshRevoked) {
+          throw new Error("invite_not_usable");
         }
-      });
 
-      const membership = await tx.groupMembership.upsert({
-        where: {
-          groupId_studentId: {
-            groupId: freshInvite.groupId,
-            studentId: user.student.id
-          }
-        },
-        update: {},
-        create: {
-          groupId: freshInvite.groupId,
-          studentId: user.student.id
-        },
-        select: {
-          id: true,
-          groupId: true,
-          studentId: true,
-          createdAt: true
-        }
-      });
-
-      const nextUsedCount = freshInvite.usedCount + 1;
-      const nextStatus = nextUsedCount >= freshInvite.maxUses ? "used" : "active";
-
-      const updatedInvite = await tx.invite.update({
-        where: { id: freshInvite.id },
-        data: {
-          usedCount: nextUsedCount,
-          usedAt: new Date(),
-          status: nextStatus
-        },
-        select: {
-          id: true,
-          status: true,
-          usedCount: true,
-          maxUses: true
-        }
-      });
-
-      await tx.auditLog.createMany({
-        data: [
-          {
-            actorUserId: user.id,
-            action: "invite_used",
-            entityType: "invite",
-            entityId: updatedInvite.id,
-            payload: {
-              groupId: freshInvite.groupId,
-              usedCount: updatedInvite.usedCount,
-              maxUses: updatedInvite.maxUses
+        const user = await tx.user.create({
+          data: {
+            role: "student",
+            email,
+            passwordHash,
+            displayName,
+            student: {
+              create: {}
             }
           },
-          {
-            actorUserId: user.id,
-            action: "membership_created",
-            entityType: "group_membership",
-            entityId: membership.id,
-            payload: {
-              groupId: membership.groupId,
-              studentId: membership.studentId
+          select: {
+            id: true,
+            email: true,
+            role: true,
+            displayName: true,
+            student: {
+              select: { id: true }
             }
           }
-        ]
-      });
+        });
 
-      return {
-        user: {
-          id: user.id,
-          email: user.email,
-          role: user.role,
-          displayName: user.displayName
-        },
-        membership,
-        invite: updatedInvite
-      };
-    });
+        const membership = await tx.groupMembership.upsert({
+          where: {
+            groupId_studentId: {
+              groupId: freshInvite.groupId,
+              studentId: user.student.id
+            }
+          },
+          update: {},
+          create: {
+            groupId: freshInvite.groupId,
+            studentId: user.student.id
+          },
+          select: {
+            id: true,
+            groupId: true,
+            studentId: true,
+            createdAt: true
+          }
+        });
+
+        const nextUsedCount = freshInvite.usedCount + 1;
+        const nextStatus = nextUsedCount >= freshInvite.maxUses ? "used" : "active";
+
+        const updatedInvite = await tx.invite.update({
+          where: { id: freshInvite.id },
+          data: {
+            usedCount: nextUsedCount,
+            usedAt: new Date(),
+            status: nextStatus
+          },
+          select: {
+            id: true,
+            status: true,
+            usedCount: true,
+            maxUses: true
+          }
+        });
+
+        await tx.auditLog.createMany({
+          data: [
+            {
+              actorUserId: user.id,
+              action: "invite_used",
+              entityType: "invite",
+              entityId: updatedInvite.id,
+              payload: {
+                groupId: freshInvite.groupId,
+                usedCount: updatedInvite.usedCount,
+                maxUses: updatedInvite.maxUses
+              }
+            },
+            {
+              actorUserId: user.id,
+              action: "membership_created",
+              entityType: "group_membership",
+              entityId: membership.id,
+              payload: {
+                groupId: membership.groupId,
+                studentId: membership.studentId
+              }
+            }
+          ]
+        });
+
+        return {
+          user: {
+            id: user.id,
+            email: user.email,
+            role: user.role,
+            displayName: user.displayName
+          },
+          membership,
+          invite: updatedInvite
+        };
+      });
+    } catch (error: any) {
+      if (error?.message === "invite_not_found") {
+        return reply.code(404).send({ error: "invite_not_found" });
+      }
+      if (error?.message === "invite_not_usable") {
+        return reply.code(400).send({ error: "invite_not_usable", reason: "race_state_changed" });
+      }
+      throw error;
+    }
 
     const tokenJwt = await reply.jwtSign({
       sub: result.user.id,
