@@ -238,5 +238,10 @@
     "title": "[TASK] Add trainer groups API for invite creation flow",
     "body": "Expose trainer-owned group create/list endpoints required by invite UI flow.",
     "labels": ["type:task", "prio:p1", "area:groups-invites", "status:todo"]
+  },
+  {
+    "title": "[TASK] Refactor trigger logic into centralized events block",
+    "body": "Move trigger processing to a unified events module with rule config, event dispatcher, and scheduled reconcile registration.",
+    "labels": ["type:task", "prio:p1", "area:triggers", "status:todo"]
   }
 ]
