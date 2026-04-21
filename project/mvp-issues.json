@@ -218,5 +218,10 @@
     "title": "[TASK] Implement private media uploads via filesystem provider",
     "body": "Replace MinIO dependency for MVP media path with local filesystem storage provider, private access checks, and report attachment endpoints.",
     "labels": ["type:task", "prio:p1", "area:media", "status:todo"]
+  },
+  {
+    "title": "[TASK] Extend API smoke workflow for report and attachment flow",
+    "body": "Expand CI smoke to cover program/assignment/report submit and filesystem attachment upload/read access checks.",
+    "labels": ["type:task", "prio:p1", "area:infra", "status:todo"]
   }
 ]
