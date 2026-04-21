@@ -1,0 +1,70 @@
+name: Close Issue By Title Marker
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  close_by_title:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Close matching issues from commit markers
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.PROJECTS_TOKEN }}
+          script: |
+            // Commit body marker format:
+            // Issue-Title: [TASK] Some exact issue title
+            const commits = context.payload.commits || [];
+            const titles = new Set();
+
+            for (const commit of commits) {
+              const message = commit.message || "";
+              const lines = message.split(/\r?\n/);
+              for (const line of lines) {
+                const m = line.match(/^Issue-Title:\s*(.+)$/i);
+                if (m && m[1]) titles.add(m[1].trim());
+              }
+            }
+
+            if (titles.size === 0) {
+              core.info("No Issue-Title markers found.");
+              return;
+            }
+
+            const openIssues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              per_page: 100
+            });
+
+            const onlyIssues = openIssues.filter(i => !i.pull_request);
+
+            for (const title of titles) {
+              const issue = onlyIssues.find(i => i.title === title);
+              if (!issue) {
+                core.warning(`Open issue not found for title: ${title}`);
+                continue;
+              }
+
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: "Задача закрыта автоматически по коммиту в main (Issue-Title marker)."
+              });
+
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                state: "closed"
+              });
+
+              core.notice(`Closed issue #${issue.number}: ${title}`);
+            }

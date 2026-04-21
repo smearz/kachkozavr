@@ -30,3 +30,9 @@ MVP для control-loop продукта тренера и ученика.
 - Подготовлен минимальный API health endpoint (`/health`).
 - Подготовлен worker-процесс для очередей.
 - Добавлен docker-compose для PostgreSQL, Redis, MinIO.
+
+## Процесс работы с задачами
+
+- Для автоматического закрытия issue без номера используем marker в commit message:
+  - `Issue-Title: <точный заголовок issue>`
+- Workflow сам находит открытый issue по заголовку и закрывает его.
