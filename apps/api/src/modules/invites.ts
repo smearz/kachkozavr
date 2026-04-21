@@ -1,4 +1,5 @@
 import { randomBytes, createHash } from "node:crypto";
+import argon2 from "argon2";
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
@@ -15,6 +16,13 @@ const revokeInviteSchema = z.object({
 
 const validateInviteQuerySchema = z.object({
   token: z.string().min(20)
+});
+
+const joinInviteSchema = z.object({
+  token: z.string().min(20),
+  email: z.string().email(),
+  password: z.string().min(8).max(128),
+  displayName: z.string().min(1).max(120).optional()
 });
 
 type AuthUser = {
@@ -234,6 +242,189 @@ export async function registerInviteRoutes(app: FastifyInstance) {
         group: invite.group
       },
       reason: valid ? null : isRevoked ? "revoked" : isExpired ? "expired" : isUsedOut ? "used_out" : "invalid"
+    });
+  });
+
+  app.post("/invites/join", async (request, reply) => {
+    const parsed = joinInviteSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: "validation_error", details: parsed.error.issues });
+    }
+
+    const { token, email, password, displayName } = parsed.data;
+    const tokenHash = sha256(token);
+
+    const invite = await prisma.invite.findUnique({
+      where: { tokenHash },
+      select: {
+        id: true,
+        groupId: true,
+        status: true,
+        expiresAt: true,
+        maxUses: true,
+        usedCount: true
+      }
+    });
+
+    if (!invite) {
+      return reply.code(404).send({ error: "invite_not_found" });
+    }
+
+    const now = Date.now();
+    const isExpired = invite.expiresAt.getTime() <= now;
+    const isUsedOut = invite.usedCount >= invite.maxUses;
+    const isRevoked = invite.status === "revoked";
+    const isActive = invite.status === "active";
+
+    if (!isActive || isExpired || isUsedOut || isRevoked) {
+      return reply.code(400).send({
+        error: "invite_not_usable",
+        reason: isRevoked ? "revoked" : isExpired ? "expired" : isUsedOut ? "used_out" : "inactive"
+      });
+    }
+
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true, role: true }
+    });
+    if (existingUser) {
+      return reply.code(409).send({ error: "email_already_exists" });
+    }
+
+    const passwordHash = await argon2.hash(password, {
+      type: argon2.argon2id
+    });
+
+    const result = await prisma.$transaction(async (tx: any) => {
+      const freshInvite = await tx.invite.findUnique({
+        where: { id: invite.id },
+        select: {
+          id: true,
+          status: true,
+          expiresAt: true,
+          maxUses: true,
+          usedCount: true,
+          groupId: true
+        }
+      });
+
+      if (!freshInvite) throw new Error("invite_not_found");
+
+      const freshExpired = freshInvite.expiresAt.getTime() <= Date.now();
+      const freshUsedOut = freshInvite.usedCount >= freshInvite.maxUses;
+      const freshRevoked = freshInvite.status === "revoked";
+      const freshActive = freshInvite.status === "active";
+      if (!freshActive || freshExpired || freshUsedOut || freshRevoked) {
+        throw new Error("invite_not_usable");
+      }
+
+      const user = await tx.user.create({
+        data: {
+          role: "student",
+          email,
+          passwordHash,
+          displayName,
+          student: {
+            create: {}
+          }
+        },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          displayName: true,
+          student: {
+            select: { id: true }
+          }
+        }
+      });
+
+      const membership = await tx.groupMembership.upsert({
+        where: {
+          groupId_studentId: {
+            groupId: freshInvite.groupId,
+            studentId: user.student.id
+          }
+        },
+        update: {},
+        create: {
+          groupId: freshInvite.groupId,
+          studentId: user.student.id
+        },
+        select: {
+          id: true,
+          groupId: true,
+          studentId: true,
+          createdAt: true
+        }
+      });
+
+      const nextUsedCount = freshInvite.usedCount + 1;
+      const nextStatus = nextUsedCount >= freshInvite.maxUses ? "used" : "active";
+
+      const updatedInvite = await tx.invite.update({
+        where: { id: freshInvite.id },
+        data: {
+          usedCount: nextUsedCount,
+          usedAt: new Date(),
+          status: nextStatus
+        },
+        select: {
+          id: true,
+          status: true,
+          usedCount: true,
+          maxUses: true
+        }
+      });
+
+      await tx.auditLog.createMany({
+        data: [
+          {
+            actorUserId: user.id,
+            action: "invite_used",
+            entityType: "invite",
+            entityId: updatedInvite.id,
+            payload: {
+              groupId: freshInvite.groupId,
+              usedCount: updatedInvite.usedCount,
+              maxUses: updatedInvite.maxUses
+            }
+          },
+          {
+            actorUserId: user.id,
+            action: "membership_created",
+            entityType: "group_membership",
+            entityId: membership.id,
+            payload: {
+              groupId: membership.groupId,
+              studentId: membership.studentId
+            }
+          }
+        ]
+      });
+
+      return {
+        user: {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          displayName: user.displayName
+        },
+        membership,
+        invite: updatedInvite
+      };
+    });
+
+    const tokenJwt = await reply.jwtSign({
+      sub: result.user.id,
+      role: "student"
+    });
+
+    return reply.code(201).send({
+      user: result.user,
+      membership: result.membership,
+      invite: result.invite,
+      token: tokenJwt
     });
   });
 }
